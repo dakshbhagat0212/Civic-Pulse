@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CivicPulse — AI-powered civic issue reporting. Upload geo-tagged photos, auto-categorize problems, and track resolutions in real-time.">
+  <title>CivicPulse — AI Civic Issue Reporter</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <meta property="og:title" content="CivicPulse — AI Civic Issue Reporter">
+  <meta property="og:description" content="AI-powered civic issue reporting platform. Report local problems, auto-categorize with AI, track resolutions.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#0f172a">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <!-- App CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ══ Navbar ══ -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <div class="logo-icon">⚡</div>
+      <span>CivicPulse</span>
+    </div>
+    <div class="nav-links">
+      <button class="nav-btn active" data-view="map" id="nav-map">🗺️ <span class="nav-label">Map</span></button>
+      <button class="nav-btn" data-view="report" id="nav-report">📝 <span class="nav-label">Report</span></button>
+      <button class="nav-btn" data-view="dashboard" id="nav-dashboard">📊 <span class="nav-label">Dashboard</span></button>
+    </div>
+    <div class="nav-actions">
+      <button class="btn-settings" id="nav-settings" title="API Settings">⚙️</button>
+      <button class="btn-report" data-view="report">+ New Report</button>
+    </div>
+  </nav>
+
+  <!-- ══ App Body ══ -->
+  <main class="app-body">
+
+    <!-- ── Map View ── -->
+    <section class="view-section active" id="view-map">
+      <div class="map-controls">
+        <select id="map-filter-status">
+          <option value="">All Status</option>
+          <option value="Open">🔴 Open</option>
+          <option value="In Progress">🟡 In Progress</option>
+          <option value="Resolved">🟢 Resolved</option>
+        </select>
+        <select id="map-filter-category">
+          <option value="">All Categories</option>
+          <option value="Potholes & Road Damage">🕳️ Potholes & Road Damage</option>
+          <option value="Illegal Dumping / Garbage">🗑️ Illegal Dumping / Garbage</option>
+          <option value="Street Light Outage">💡 Street Light Outage</option>
+          <option value="Water & Drainage Issues">🌊 Water & Drainage Issues</option>
+          <option value="Fallen Trees / Vegetation">🌳 Fallen Trees / Vegetation</option>
+          <option value="Infrastructure Damage">🏗️ Infrastructure Damage</option>
+          <option value="Traffic & Signage">🚧 Traffic & Signage</option>
+          <option value="Other / General">⚠️ Other / General</option>
+        </select>
+      </div>
+      <div class="map-count-badge">Showing <span id="map-report-count">0</span> reports</div>
+      <div id="map-container"></div>
+    </section>
+
+    <!-- ── Report View ── -->
+    <section class="view-section" id="view-report">
+      <div class="report-view">
+        <h1>📝 Submit a Report</h1>
+        <p class="subtitle">Help improve your community by reporting civic issues. Our AI will auto-categorize your report.</p>
+        <form id="report-form">
+          <div class="form-grid">
+            <div class="form-col">
+              <div class="form-group">
+                <label for="report-title">Issue Title</label>
+                <input type="text" id="report-title" placeholder="e.g. Pothole on Main Street" required>
+              </div>
+              <div class="form-group">
+                <label for="report-desc">Description</label>
+                <textarea id="report-desc" placeholder="Describe the issue in detail..." rows="4" required></textarea>
+              </div>
+              <div id="ai-suggestion"></div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="report-category">Category</label>
+                  <select id="report-category">
+                    <option value="Potholes & Road Damage">🕳️ Potholes & Road Damage</option>
+                    <option value="Illegal Dumping / Garbage">🗑️ Illegal Dumping / Garbage</option>
+                    <option value="Street Light Outage">💡 Street Light Outage</option>
+                    <option value="Water & Drainage Issues">🌊 Water & Drainage Issues</option>
+                    <option value="Fallen Trees / Vegetation">🌳 Fallen Trees / Vegetation</option>
+                    <option value="Infrastructure Damage">🏗️ Infrastructure Damage</option>
+                    <option value="Traffic & Signage">🚧 Traffic & Signage</option>
+                    <option value="Other / General">⚠️ Other / General</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="report-priority">Priority</label>
+                  <select id="report-priority">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Photo Evidence</label>
+                <div id="photo-drop-zone">
+                  <div class="drop-icon">📷</div>
+                  <div class="drop-text">Drop an image here or click to upload</div>
+                  <div class="drop-hint">Supports JPG, PNG, WebP</div>
+                </div>
+                <div id="photo-preview"></div>
+                <input type="file" id="photo-input" accept="image/*" hidden>
+              </div>
+            </div>
+            <div class="form-col">
+              <div class="form-group">
+                <label>Location</label>
+                <div class="location-row">
+                  <button type="button" id="btn-detect-location">📍 Auto-Detect Location</button>
+                  <span id="report-location-text">No location selected</span>
+                </div>
+                <div id="report-minimap"></div>
+                <div class="drop-hint" style="margin-top:4px;">Click on the map to set issue location</div>
+              </div>
+              <div class="form-group">
+                <label for="report-address">Address (auto-filled)</label>
+                <input type="text" id="report-address" placeholder="Address will auto-fill from location">
+              </div>
+              <button type="submit" class="btn-submit">🚀 Submit Report</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ── Dashboard View ── -->
+    <section class="view-section" id="view-dashboard">
+      <div class="dashboard-view">
+        <div class="dash-header">
+          <h1>📊 Municipality Dashboard</h1>
+          <div class="dash-filters">
+            <input type="text" id="dash-search" placeholder="🔍 Search issues...">
+            <select id="dash-filter-status">
+              <option value="">All Status</option>
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+            <select id="dash-filter-category">
+              <option value="">All Categories</option>
+              <option value="Potholes & Road Damage">Potholes & Road Damage</option>
+              <option value="Illegal Dumping / Garbage">Illegal Dumping / Garbage</option>
+              <option value="Street Light Outage">Street Light Outage</option>
+              <option value="Water & Drainage Issues">Water & Drainage Issues</option>
+              <option value="Fallen Trees / Vegetation">Fallen Trees / Vegetation</option>
+              <option value="Infrastructure Damage">Infrastructure Damage</option>
+              <option value="Traffic & Signage">Traffic & Signage</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Issues</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-open">0</div><div class="stat-label">Open</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-progress">0</div><div class="stat-label">In Progress</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-resolved">0</div><div class="stat-label">Resolved</div></div>
+          <div class="stat-card"><div class="stat-value" id="stat-rate">0%</div><div class="stat-label">Resolution Rate</div></div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+          <div class="chart-card"><h3>By Category</h3><div class="chart-wrap"><canvas id="chart-category"></canvas></div></div>
+          <div class="chart-card"><h3>By Status</h3><div class="chart-wrap"><canvas id="chart-status"></canvas></div></div>
+          <div class="chart-card"><h3>7-Day Trend</h3><div class="chart-wrap"><canvas id="chart-trend"></canvas></div></div>
+        </div>
+
+        <!-- Issue Table -->
+        <div class="table-card">
+          <h3>All Issues</h3>
+          <table class="issue-table">
+            <thead>
+              <tr>
+                <th>Issue</th><th>Category</th><th>Status</th><th>Priority</th><th>Date</th><th>Update</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="issue-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ══ Detail Overlay ══ -->
+  <div id="detail-overlay">
+    <div class="detail-panel">
+      <button id="detail-close">✕</button>
+      <div id="detail-content"></div>
+    </div>
+  </div>
+
+  <!-- ══ API Key Setup Modal ══ -->
+  <div id="api-setup-overlay">
+    <div class="api-setup-modal">
+      <div class="api-modal-header">
+        <div class="api-modal-icon">🔑</div>
+        <h2>Connect Google Gemini AI</h2>
+        <p>Enter your Gemini API key to unlock AI-powered features like smart categorization and the chatbot assistant.</p>
+      </div>
+      <div class="api-modal-body">
+        <div class="form-group">
+          <label for="api-key-input">Gemini API Key</label>
+          <input type="password" id="api-key-input" placeholder="AIzaSy...your-api-key-here">
+          <div class="drop-hint">Get your free API key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a></div>
+        </div>
+        <div id="api-key-status" class="api-status"></div>
+        <div class="api-modal-actions">
+          <button id="api-save-btn" class="btn-submit">🔑 Save & Connect</button>
+          <button id="api-skip-btn" class="btn-skip">Skip for now</button>
+        </div>
+      </div>
+      <div class="api-modal-features">
+        <div class="feature-item"><span>✨</span> AI-powered issue categorization</div>
+        <div class="feature-item"><span>🤖</span> Smart chatbot assistant</div>
+        <div class="feature-item"><span>🎯</span> Priority suggestions</div>
+        <div class="feature-item"><span>🔒</span> Key stored locally, never sent to our servers</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Chatbot ══ -->
+  <button id="chat-fab" title="Chat with AI Assistant">
+    <span class="fab-icon">🤖</span>
+    <span class="fab-pulse"></span>
+  </button>
+  <div id="chat-panel">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-avatar">⚡</div>
+        <div>
+          <div class="chat-name">CivicPulse AI</div>
+          <div class="chat-status-text">Powered by Google Gemini</div>
+        </div>
+      </div>
+      <button id="chat-close">✕</button>
+    </div>
+    <div id="chat-messages" class="chat-messages">
+      <div id="chat-quick-actions" class="chat-quick-actions">
+        <button class="chat-quick-btn" data-msg="How do I report a civic issue?">📝 How to report?</button>
+        <button class="chat-quick-btn" data-msg="What types of issues can I report?">📋 Issue categories</button>
+        <button class="chat-quick-btn" data-msg="How can I track the status of my reported issue?">📊 Track status</button>
+        <button class="chat-quick-btn" data-msg="What should I include in a good report?">💡 Reporting tips</button>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Ask about civic issues..." autocomplete="off">
+      <button id="chat-send">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ Toasts ══ -->
+  <div id="toast-container"></div>
+
+  <!-- ══ Scripts ══ -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/ai-engine.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/report.js"></script>
+  <script src="js/chatbot.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
